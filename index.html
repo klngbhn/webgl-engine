@@ -1,0 +1,135 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<title>WebGL Engine</title>
+		
+		<script id="vertex-shader" type="x-shader/x-vertex">
+			attribute vec4 vPosition;
+			
+			uniform mat4 modelMatrix;
+			uniform mat4 projectionMatrix;
+			uniform mat4 viewMatrix;
+			
+			void main()
+			{
+				gl_Position = projectionMatrix * viewMatrix * modelMatrix * vPosition;
+			}
+		</script>
+		<script id="fragment-shader" type="x-shader/x-fragment">
+			precision mediump float;
+			
+			uniform vec4 objectColor;
+			
+			void main()
+			{					
+				gl_FragColor = objectColor;
+			}
+		</script>
+		
+		<script id="vertex-shader-lighting" type="x-shader/x-vertex">
+			attribute vec4 vPosition;
+			attribute vec4 vNormal;
+			attribute vec2 vTexCoord;
+			
+			// position of the light in world coordinates
+			uniform vec3 lightPosition;
+			
+			// transformation matrices
+			uniform mat4 modelMatrix;
+			uniform mat4 projectionMatrix;
+			uniform mat4 viewMatrix;
+			
+			// pre-computed normal matrix
+			uniform mat4 normalMatrix;
+			
+			varying vec4 position;
+			varying vec4 lightPos;
+			varying vec4 normal;
+			
+			varying highp vec2 vTextureCoord;
+			
+			void main()
+			{
+				lightPos = viewMatrix * vec4(lightPosition, 1);
+				normal = normalMatrix * vNormal;
+				
+				mat4 modelViewMatrix = viewMatrix * modelMatrix;
+				position = modelViewMatrix * vPosition;
+				
+				vTextureCoord = vTexCoord;
+				
+				gl_Position = projectionMatrix * position;
+			}
+		</script>
+		<script id="fragment-shader-lighting" type="x-shader/x-fragment">
+			precision mediump float;
+			
+			uniform sampler2D diffuseMap;
+			
+			// ambient intensity
+			uniform vec4 Ia;
+			
+			// diffuse and specular intensities of the light source
+			uniform vec4 Id;
+			uniform vec4 Is;
+			
+			// ambient, diffuse and specular reflection factors (object specific)
+			uniform vec4 ka;
+			uniform vec4 kd;
+			uniform vec4 ks;
+			
+			// constant, linear and quadratic attenuation factors
+			const float c1 = 1.0;
+			const float c2 = 0.0005;
+			const float c3 = 0.000003;
+			
+			// specular exponent
+			const float n = 5.0;
+			
+			varying vec4 position;
+			varying vec4 lightPos;
+			varying vec4 normal;
+			
+			varying highp vec2 vTextureCoord;
+			
+			void main()
+			{				
+				
+				// light direction
+				vec3 L = normalize((lightPos - position).xyz);
+				// normal
+				vec3 N = normalize((normal).xyz);
+				
+				// view direction
+				vec3 V = normalize((-position).xyz);
+				// reflection direction
+				vec3 R = reflect(-L, N);	
+					
+				// distance between light source and vertex
+				float distance = length(lightPos - position);
+				// distance attenuation
+				float fAtt = min(1.0 / (c1 + c2 * distance + c3 * pow(distance, 2.0)), 1.0);
+				
+				vec4 diffuseColor = texture2D(diffuseMap, vec2(vTextureCoord.s, vTextureCoord.t));
+				gl_FragColor = Ia * ka + fAtt * (Id * diffuseColor * max(dot(N, L), 0.0) + Is * ks * pow(max(0.0, dot(R, V)), n));
+			}
+		</script>
+
+		<script type="text/javascript" src="includes/webgl-utils.js">
+		</script>
+		<script type="text/javascript" src="includes/initShaders.js">
+		</script>
+		<script type="text/javascript" src="includes/gl-matrix.js">
+		</script>
+		<script type="text/javascript" src="main.js">
+		</script>
+	</head>
+	<body>
+
+		<canvas id="gl-canvas" width="512" height="512">
+			If you see this, your browser doesn't support WebGL.
+		</canvas>
+		
+	</body>
+</html>
